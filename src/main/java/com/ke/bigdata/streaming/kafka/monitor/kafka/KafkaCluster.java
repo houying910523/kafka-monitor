@@ -51,14 +51,12 @@ public class KafkaCluster implements Closeable {
 
     private LagService lagService;
 
-    private ConsumerNetworkClient client;
     public KafkaCluster(String zk, String path) throws Exception {
         this.zkUtils = new ZkUtils(zk, path);
         initBrokerInfo();
         bootstrap = brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort()).reduce((b1, b2) -> b1 + "," + b2).get();
         lagService = new LagService(bootstrap);
         lagService.start();
-        client = createConsumerNetworkClient();
     }
 
     public List<JmxMetricItem> fetchJmxItem(List<JmxMonitorTemplate> list, String topic) {
@@ -84,7 +82,8 @@ public class KafkaCluster implements Closeable {
     }
 
     public List<String> listGroups(String topic) {
-        return brokerMap.values().stream().map(broker -> new Node(Integer.valueOf(broker.getId()), broker.getHost(), broker.getPort()))
+        ConsumerNetworkClient client = createConsumerNetworkClient();
+        List<String> result =  brokerMap.values().stream().map(broker -> new Node(Integer.valueOf(broker.getId()), broker.getHost(), broker.getPort()))
                 .flatMap(node -> {
                     RequestFuture<ClientResponse> future = client.send(node, new ListGroupsRequest.Builder());
                     client.poll(future);
@@ -92,7 +91,7 @@ public class KafkaCluster implements Closeable {
                     List<String> groups = response.groups().stream().map(ListGroupsResponse.Group::groupId).collect(Collectors.toList());
                     future = client.send(node, new DescribeGroupsRequest.Builder(groups));
                     client.poll(future);
-                    Set<String> result = Sets.newHashSet();
+                    Set<String> set = Sets.newHashSet();
                     DescribeGroupsResponse response2 = (DescribeGroupsResponse) future.value().responseBody();
                     response2.groups().forEach( (group, metadata) -> {
                         if ("Stable".equals(metadata.state())) {
@@ -102,19 +101,20 @@ public class KafkaCluster implements Closeable {
                                         return assignment.partitions().stream().map(TopicPartition::topic);
                                     }).collect(Collectors.toSet());
                             if (topics.contains(topic)) {
-                                result.add(group);
+                                set.add(group);
                             }
                         }
                     });
-                    return result.stream();
+                    return set.stream();
                 }).collect(Collectors.toList());
+        IOUtils.closeQuietly(client);
+        return result;
     }
 
     @Override
     public void close() {
         brokerMap.values().forEach(Broker::close);
         lagService.stop();
-        IOUtils.closeQuietly(client);
     }
 
     private void initBrokerInfo() throws Exception {
