@@ -22,31 +22,21 @@ public class KafkaClusterMonitor implements Closeable {
     private final List<String> topics;
 
     public KafkaClusterMonitor(Config config) throws Exception {
-        kafkaCluster = new KafkaCluster(
-                config.getString("zk"),
-                config.getString("path")
-        );
+        kafkaCluster = new KafkaCluster(config.getString("zk"), config.getString("path"));
 
-        jmxMonitorTemplates = config.getConfigList("jmx")
-                .stream()
-                .map(c -> new JmxMonitorTemplate(
-                        c.getString("name"),
-                        c.getString("beanName"),
-                        c.getString("attribution")
-                ))
-                .collect(Collectors.toList());
+        jmxMonitorTemplates = config.getConfigList("jmx").stream()
+                .map(c -> new JmxMonitorTemplate(c.getString("name"), c.getString("beanName"),
+                        c.getString("attribution"))).collect(Collectors.toList());
 
         topics = config.getStringList("topics");
         config.getConfigList("group-topics")
-                .forEach(c -> kafkaCluster.registerGroupTopic(
-                        c.getString("group"),
-                        c.getString("topic")
-                ));
+                .forEach(c -> kafkaCluster.registerGroupTopic(c.getString("group"), c.getString("topic")));
     }
 
     public void fetch() {
         for (String topic : topics) {
-            kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic).forEach(jmxMetricItem -> logger.info(jmxMetricItem.toString()));
+            kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic)
+                    .forEach(jmxMetricItem -> logger.info(jmxMetricItem.toString()));
         }
         kafkaCluster.fetchLagItem().forEach(lji -> logger.info(lji.toString()));
     }

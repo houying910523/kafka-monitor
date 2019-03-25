@@ -15,7 +15,7 @@ public class ZkSerializerImpl implements ZkSerializer {
     @Override
     public byte[] serialize(Object data) throws ZkMarshallingError {
         try {
-            return ((String)data).getBytes("UTF-8");
+            return ((String) data).getBytes("UTF-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;
@@ -25,7 +25,7 @@ public class ZkSerializerImpl implements ZkSerializer {
     @Override
     public Object deserialize(byte[] bytes) throws ZkMarshallingError {
         try {
-            return bytes == null ? null: new String(bytes, "UTF-8");
+            return bytes == null ? null : new String(bytes, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return null;

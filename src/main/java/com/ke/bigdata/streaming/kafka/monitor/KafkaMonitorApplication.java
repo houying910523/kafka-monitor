@@ -26,7 +26,8 @@ public class KafkaMonitorApplication {
             kafkaClusterMonitors.add(kafkaClusterMonitor);
         }
 
-        ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(kafkaClusterMonitors.size());
+        ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(
+                kafkaClusterMonitors.size());
 
         for (KafkaClusterMonitor kafkaClusterMonitor : kafkaClusterMonitors) {
             scheduledExecutorService.scheduleAtFixedRate(kafkaClusterMonitor::fetch, 0, 10, TimeUnit.SECONDS);

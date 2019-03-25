@@ -44,11 +44,12 @@ public class ZkUtils {
     }
 
     public List<String> getIsrForPartition(TopicPartition topicPartition) {
-        String stateJson = zkClient.readData(zkPath + BROKERS_TOPICS + "/" + topicPartition.topic() +
-                "/partitions/" + topicPartition.partition() + "/state");
+        String stateJson = zkClient.readData(
+                zkPath + BROKERS_TOPICS + "/" + topicPartition.topic() + "/partitions/" + topicPartition.partition()
+                        + "/state");
         try {
             List<String> ids = Lists.newArrayList();
-            for (JsonNode node: objectMapper.readTree(stateJson).get("isr")) {
+            for (JsonNode node : objectMapper.readTree(stateJson).get("isr")) {
                 ids.add(node.asText());
             }
             return ids;
@@ -75,17 +76,16 @@ public class ZkUtils {
     }
 
     public List<LeaderPartition> getPartitions(String topic) {
-        return zkClient.getChildren(zkPath + BROKERS_TOPICS + "/" + topic + "/partitions")
-                .stream()
-                .map(part -> {
-                    try {
-                        String stateJson = zkClient.readData(zkPath + BROKERS_TOPICS + "/" + topic + "/partitions/" + part + "/state");
-                        String leader = objectMapper.readTree(stateJson).get("leader").asText();
-                        return new LeaderPartition(topic, Integer.valueOf(part), leader);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        return null;
-                    }
-                }).collect(Collectors.toList());
+        return zkClient.getChildren(zkPath + BROKERS_TOPICS + "/" + topic + "/partitions").stream().map(part -> {
+            try {
+                String stateJson = zkClient
+                        .readData(zkPath + BROKERS_TOPICS + "/" + topic + "/partitions/" + part + "/state");
+                String leader = objectMapper.readTree(stateJson).get("leader").asText();
+                return new LeaderPartition(topic, Integer.valueOf(part), leader);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }).collect(Collectors.toList());
     }
 }

@@ -3,7 +3,6 @@ package com.ke.bigdata.streaming.kafka.monitor.kafka;
 import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxConnection;
 import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMetricItem;
 import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMonitorItem;
-import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMonitorTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -14,13 +13,13 @@ import java.util.stream.Collectors;
  * desc:
  */
 public class Broker {
-    private String id;
+    private int id;
     private String host;
     private int port;
     private int jmxPort;
     private JmxConnection jmxConnection;
 
-    public Broker(String id, String host, int port, int jmxPort) throws Exception {
+    public Broker(int id, String host, int port, int jmxPort) throws Exception {
         this.id = id;
         this.host = host;
         this.port = port;
@@ -31,7 +30,7 @@ public class Broker {
         this.jmxConnection = new JmxConnection(host, jmxPort);
     }
 
-    public String getId() {
+    public int getId() {
         return id;
     }
 

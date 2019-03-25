@@ -8,13 +8,13 @@ import com.ke.bigdata.streaming.kafka.monitor.util.JsonUtils;
  * desc:
  */
 public class JmxMetricItem {
-    private String id;
+    private int id;
     private String broker;
     private String name;
     private String topic;
     private Object value;
 
-    public JmxMetricItem(String id, String broker, String name, String topic, Object value) {
+    public JmxMetricItem(int id, String broker, String name, String topic, Object value) {
         this.id = id;
         this.broker = broker;
         this.name = name;
@@ -26,7 +26,7 @@ public class JmxMetricItem {
         return broker;
     }
 
-    public String getId() {
+    public int getId() {
         return id;
     }
 

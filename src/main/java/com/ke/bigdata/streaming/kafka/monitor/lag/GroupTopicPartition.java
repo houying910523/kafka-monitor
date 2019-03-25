@@ -30,9 +30,8 @@ public class GroupTopicPartition extends TopicPartition {
             return false;
         }
         GroupTopicPartition that = (GroupTopicPartition) o;
-        return partition() == that.partition()
-                && Objects.equals(group, that.group)
-                && Objects.equals(topic(), that.topic());
+        return partition() == that.partition() && Objects.equals(group, that.group) && Objects
+                .equals(topic(), that.topic());
     }
 
     @Override

@@ -8,7 +8,6 @@ import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMonitorTemplate;
 import com.ke.bigdata.streaming.kafka.monitor.lag.LagMetricItem;
 import com.ke.bigdata.streaming.kafka.monitor.lag.LagService;
 import com.ke.bigdata.streaming.kafka.monitor.util.IOUtils;
-import kafka.admin.AdminClient;
 import org.apache.kafka.clients.*;
 import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient;
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol;
@@ -37,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
 /**
  * author: hy
  * date: 2019/1/30
@@ -54,22 +54,17 @@ public class KafkaCluster implements Closeable {
     public KafkaCluster(String zk, String path) throws Exception {
         this.zkUtils = new ZkUtils(zk, path);
         initBrokerInfo();
-        bootstrap = brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort()).reduce((b1, b2) -> b1 + "," + b2).get();
+        bootstrap = brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort())
+                .reduce((b1, b2) -> b1 + "," + b2).get();
         lagService = new LagService(bootstrap);
         lagService.start();
     }
 
     public List<JmxMetricItem> fetchJmxItem(List<JmxMonitorTemplate> list, String topic) {
         List<LeaderPartition> leaderPartitions = zkUtils.getPartitions(topic);
-        Set<String> leaders = leaderPartitions.stream()
-                .map(LeaderPartition::leader)
-                .collect(Collectors.toSet());
-        List<JmxMonitorItem> items = list.stream()
-                .map(item -> item.applyTopic(topic))
-                .collect(Collectors.toList());
-        return leaders.stream()
-                .map(id -> brokerMap.get(id))
-                .flatMap(broker -> broker.poll(items).stream())
+        Set<String> leaders = leaderPartitions.stream().map(LeaderPartition::leader).collect(Collectors.toSet());
+        List<JmxMonitorItem> items = list.stream().map(item -> item.applyTopic(topic)).collect(Collectors.toList());
+        return leaders.stream().map(id -> brokerMap.get(id)).flatMap(broker -> broker.poll(items).stream())
                 .collect(Collectors.toList());
     }
 
@@ -83,23 +78,25 @@ public class KafkaCluster implements Closeable {
 
     public List<String> listGroups(String topic) {
         ConsumerNetworkClient client = createConsumerNetworkClient();
-        List<String> result =  brokerMap.values().stream().map(broker -> new Node(Integer.valueOf(broker.getId()), broker.getHost(), broker.getPort()))
+        List<String> result = brokerMap.values().stream()
+                .map(broker -> new Node(Integer.valueOf(broker.getId()), broker.getHost(), broker.getPort()))
                 .flatMap(node -> {
                     RequestFuture<ClientResponse> future = client.send(node, new ListGroupsRequest.Builder());
                     client.poll(future);
                     ListGroupsResponse response = (ListGroupsResponse) future.value().responseBody();
-                    List<String> groups = response.groups().stream().map(ListGroupsResponse.Group::groupId).collect(Collectors.toList());
+                    List<String> groups = response.groups().stream().map(ListGroupsResponse.Group::groupId)
+                            .collect(Collectors.toList());
                     future = client.send(node, new DescribeGroupsRequest.Builder(groups));
                     client.poll(future);
                     Set<String> set = Sets.newHashSet();
                     DescribeGroupsResponse response2 = (DescribeGroupsResponse) future.value().responseBody();
-                    response2.groups().forEach( (group, metadata) -> {
+                    response2.groups().forEach((group, metadata) -> {
                         if ("Stable".equals(metadata.state())) {
-                            Set<String> topics = metadata.members().stream()
-                                    .flatMap(gm -> {
-                                        PartitionAssignor.Assignment assignment = ConsumerProtocol.deserializeAssignment(gm.memberAssignment());
-                                        return assignment.partitions().stream().map(TopicPartition::topic);
-                                    }).collect(Collectors.toSet());
+                            Set<String> topics = metadata.members().stream().flatMap(gm -> {
+                                PartitionAssignor.Assignment assignment = ConsumerProtocol
+                                        .deserializeAssignment(gm.memberAssignment());
+                                return assignment.partitions().stream().map(TopicPartition::topic);
+                            }).collect(Collectors.toSet());
                             if (topics.contains(topic)) {
                                 set.add(group);
                             }
@@ -120,7 +117,7 @@ public class KafkaCluster implements Closeable {
     private void initBrokerInfo() throws Exception {
         logger.info("init brokers");
         brokerMap = Maps.newHashMap();
-        for(String id: zkUtils.listBrokerIds()) {
+        for (String id : zkUtils.listBrokerIds()) {
             Broker broker = brokerInfo(id);
             brokerMap.put(id, broker);
             logger.info("init broker[{}]", broker.getHost());
@@ -132,7 +129,7 @@ public class KafkaCluster implements Closeable {
         JsonNode jsonNode = objectMapper.readTree(json);
         String host = jsonNode.get("host").asText();
         int port = jsonNode.get("port").asInt();
-        return new Broker(id, host, port, jsonNode.get("jmx_port").asInt());
+        return new Broker(Integer.valueOf(id), host, port, jsonNode.get("jmx_port").asInt());
     }
 
     private ConsumerNetworkClient createConsumerNetworkClient() {
@@ -145,7 +142,8 @@ public class KafkaCluster implements Closeable {
         Metadata metadata = new Metadata();
         ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(map);
 
-        List<InetSocketAddress> brokerAddresses = ClientUtils.parseAndValidateAddresses(brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort()).collect(Collectors.toList()));
+        List<InetSocketAddress> brokerAddresses = ClientUtils.parseAndValidateAddresses(
+                brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort()).collect(Collectors.toList()));
         Cluster bootstrapCluster = Cluster.bootstrap(brokerAddresses);
         metadata.update(bootstrapCluster, 0);
 
@@ -159,31 +157,15 @@ public class KafkaCluster implements Closeable {
         int defaultReceiveBufferBytes = 32 * 1024;
         AtomicInteger adminClientIdSequence = new AtomicInteger(1);
 
-        Selector selector = new Selector(
-                defaultConnectionMaxIdleMs,
-                metrics,
-                time,
-                "admin",
-                channelBuilder);
+        Selector selector = new Selector(defaultConnectionMaxIdleMs, metrics, time, "admin", channelBuilder);
 
-        NetworkClient networkClient = new NetworkClient(
-                selector,
-                metadata,
-                "admin-" + adminClientIdSequence.getAndIncrement(),
-                defaultMaxInFlightRequestsPerConnection,
-                defaultReconnectBackoffMs,
-                defaultSendBufferBytes,
-                defaultReceiveBufferBytes,
-                defaultRequestTimeoutMs,
-                time,
-                true);
+        NetworkClient networkClient = new NetworkClient(selector, metadata,
+                "admin-" + adminClientIdSequence.getAndIncrement(), defaultMaxInFlightRequestsPerConnection,
+                defaultReconnectBackoffMs, defaultSendBufferBytes, defaultReceiveBufferBytes, defaultRequestTimeoutMs,
+                time, true);
 
-        ConsumerNetworkClient highLevelClient = new ConsumerNetworkClient(
-                networkClient,
-                metadata,
-                time,
-                defaultRetryBackoffMs,
-                defaultRequestTimeoutMs);
+        ConsumerNetworkClient highLevelClient = new ConsumerNetworkClient(networkClient, metadata, time,
+                defaultRetryBackoffMs, defaultRequestTimeoutMs);
 
         return highLevelClient;
     }

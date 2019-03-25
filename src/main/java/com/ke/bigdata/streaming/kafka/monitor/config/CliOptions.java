@@ -34,8 +34,6 @@ public class CliOptions {
         File file = new File(configDir);
         File[] jsonFiles = file.listFiles(pathname -> pathname.isFile() && pathname.getName().endsWith(".json"));
         assert jsonFiles != null;
-        return Arrays.stream(jsonFiles)
-                .map(ConfigFactory::parseFile)
-                .collect(Collectors.toList());
+        return Arrays.stream(jsonFiles).map(ConfigFactory::parseFile).collect(Collectors.toList());
     }
 }

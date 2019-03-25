@@ -42,12 +42,7 @@ public class ConsumerGroupOffset {
 
     @Override
     public String toString() {
-        return "LagMetricItem{" +
-                "group=" + group() +
-                ", topic=" + topic() +
-                ", partition=" + partition() +
-                ", offset=" + offset +
-                ", commitTime=" + commitTime +
-                '}';
+        return "LagMetricItem{" + "group=" + group() + ", topic=" + topic() + ", partition=" + partition() + ", offset="
+                + offset + ", commitTime=" + commitTime + '}';
     }
 }
