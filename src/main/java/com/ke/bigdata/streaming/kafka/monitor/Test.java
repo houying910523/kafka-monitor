@@ -10,11 +10,7 @@ import com.ke.bigdata.streaming.kafka.monitor.kafka.KafkaCluster;
 public class Test {
 
     public static void main(String[] args) throws Exception {
-        String zk = args[0];
-        String path = args[1];
-
-        KafkaCluster kc = new KafkaCluster(zk, path);
-
-        kc.listGroups(args[2]).forEach(System.out::println);
+        String[] arg = new String[]{"/Users/hy/git/my/kafka-monitor/src/main/resources"};
+        KafkaMonitorApplication.main(arg);
     }
 }

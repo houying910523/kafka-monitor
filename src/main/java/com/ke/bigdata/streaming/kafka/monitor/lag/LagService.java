@@ -7,6 +7,7 @@ import kafka.common.MessageFormatter;
 import kafka.coordinator.GroupMetadataManager;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,14 +62,13 @@ public class LagService {
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         params.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         params.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        params.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, "60000");
 
         this.kafkaConsumer = new KafkaConsumer<>(params);
         this.snapshot = Maps.newHashMap();
     }
 
     public void start() {
-        pool.submit(createRunnable());
+        pool.execute(createRunnable());
     }
 
     public void stop() {
@@ -87,42 +88,29 @@ public class LagService {
             topicGroups.put(topic, groups);
         }
         groups.add(group);
-        logger.info("add group [{}]", group);
-        int pid = group.hashCode() % 50;
-        if (!currentPartition.contains(pid)) {
-            currentPartition.add(pid);
-            reassignPartitions();
-        }
-    }
-
-    private void reassignPartitions() {
-        Set<TopicPartition> set = currentPartition.stream().map(i -> new TopicPartition("__consumer_offsets", i))
-                .collect(Collectors.toSet());
-        kafkaConsumer.assign(set);
-        if (assigned.getCount() > 0) {
-            assigned.countDown();
-        }
+        logger.info("add ({}, {})", group, topic);
+        int pid = Math.abs(group.hashCode() % 50);
+        currentPartition.add(pid);
     }
 
     private Runnable createRunnable() {
         return () -> {
             threadStop = false;
-            try {
-                assigned.await();
-            } catch (InterruptedException e) {
-                logger.warn("thread exit");
-                return;
-            }
             logger.info("loop start");
+            kafkaConsumer.subscribe(Collections.singletonList("__consumer_offsets"));
             MessageFormatter formatter = new GroupMetadataManager.OffsetsMessageFormatter();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
             while (!threadStop) {
-                for (ConsumerRecord<byte[], byte[]> record : kafkaConsumer.poll(1000L)) {
-                    formatter.writeTo(record, new PrintStream(byteArrayOutputStream));
-                    String line = new String(byteArrayOutputStream.toByteArray());
-                    parseLine(line);
-                    byteArrayOutputStream.reset();
-                }
+                ConsumerRecords<byte[], byte[]> records = kafkaConsumer.poll(500);
+                currentPartition.forEach(partition -> {
+                    TopicPartition tp = new TopicPartition("__consumer_offsets", partition);
+                    for (ConsumerRecord<byte[], byte[]> record : records.records(tp)) {
+                        formatter.writeTo(record, new PrintStream(byteArrayOutputStream));
+                        String line = new String(byteArrayOutputStream.toByteArray());
+                        parseLine(line);
+                        byteArrayOutputStream.reset();
+                    }
+                });
             }
             logger.info("loop exit");
         };

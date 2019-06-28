@@ -1,0 +1,20 @@
+{
+  "zk": "zk01.matrix.zeus.lianjia.com:2181,zk02.matrix.zeus.lianjia.com:2181,zk03.matrix.zeus.lianjia.com:2181",
+  "path": "/proxy-log-kafka",
+  "jmx": [
+    {
+      "name": "MessagesInPerMinute",
+      "beanName": "kafka.server:type=BrokerTopicMetrics,name=MessagesInPerSec,topic=${topic}",
+      "attribution": "OneMinuteRate"
+    }
+  ],
+  "topics": [
+    "sec-allproxy-www-log"
+  ],
+  "group-topics": [
+    {
+      "group": "stream_sec-allproxy-www-log",
+      "topic": "sec-allproxy-www-log"
+    }
+  ]
+}

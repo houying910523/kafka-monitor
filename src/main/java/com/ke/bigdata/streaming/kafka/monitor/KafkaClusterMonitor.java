@@ -36,7 +36,9 @@ public class KafkaClusterMonitor implements Closeable {
     public void fetch() {
         for (String topic : topics) {
             kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic)
-                    .forEach(jmxMetricItem -> logger.info(jmxMetricItem.toString()));
+                    .forEach(jmxMetricItem -> {
+                        logger.info(jmxMetricItem.toString());
+                    });
         }
         kafkaCluster.fetchLagItem().forEach(lji -> logger.info(lji.toString()));
     }
