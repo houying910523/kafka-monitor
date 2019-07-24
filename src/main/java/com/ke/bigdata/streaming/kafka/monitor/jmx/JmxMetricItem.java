@@ -1,6 +1,7 @@
 package com.ke.bigdata.streaming.kafka.monitor.jmx;
 
 import com.ke.bigdata.streaming.kafka.monitor.util.JsonUtils;
+import com.ke.bigdata.streaming.kafka.monitor.util.StringUtils;
 
 /**
  * author: hy
@@ -45,5 +46,9 @@ public class JmxMetricItem {
     @Override
     public String toString() {
         return JsonUtils.toJsonString(this);
+    }
+
+    public String toCsvString() {
+        return StringUtils.join(id, broker, topic, name, value);
     }
 }

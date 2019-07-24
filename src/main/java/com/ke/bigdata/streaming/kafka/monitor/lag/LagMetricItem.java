@@ -1,6 +1,8 @@
 package com.ke.bigdata.streaming.kafka.monitor.lag;
 
+import com.google.common.base.Joiner;
 import com.ke.bigdata.streaming.kafka.monitor.util.JsonUtils;
+import com.ke.bigdata.streaming.kafka.monitor.util.StringUtils;
 
 /**
  * author: hy
@@ -45,5 +47,9 @@ public class LagMetricItem {
     @Override
     public String toString() {
         return JsonUtils.toJsonString(this);
+    }
+
+    public String toCsvString() {
+        return StringUtils.join(group, topic, partition, commitTime, lag);
     }
 }
