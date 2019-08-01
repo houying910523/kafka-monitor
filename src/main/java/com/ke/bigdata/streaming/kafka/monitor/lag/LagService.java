@@ -38,7 +38,6 @@ public class LagService {
     private Set<Integer> currentPartition;
 
     private KafkaConsumer<byte[], byte[]> kafkaConsumer;
-    private CountDownLatch assigned = new CountDownLatch(1);
 
     private Map<GroupTopicPartition, ConsumerGroupOffset> snapshot;
 

@@ -9,8 +9,8 @@ public class JmxMonitorItem extends JmxMonitorTemplate {
 
     private String topic;
 
-    public JmxMonitorItem(String name, String beanName, String attribution, String topic) {
-        super(name, beanName, attribution);
+    public JmxMonitorItem(String beanName, String attribution, String topic) {
+        super(beanName, attribution);
         this.topic = topic;
     }
 

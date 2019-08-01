@@ -1,13 +1,16 @@
 package com.ke.bigdata.streaming.kafka.monitor.jmx;
 
 import com.ke.bigdata.streaming.kafka.monitor.util.IOUtils;
+import com.ke.bigdata.streaming.kafka.monitor.util.Pair;
 
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
+import javax.management.*;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * author: hy
@@ -26,12 +29,25 @@ public class JmxConnection {
         this.connection = connector.getMBeanServerConnection();
     }
 
-    public Object getAttribution(String beanName, String attr) throws Exception {
+    public List<Pair<String, Object>> getAttribution(String beanName, String attr) throws Exception {
         ObjectName on = new ObjectName(beanName);
-        return connection.getAttribute(on, attr);
+        Set<ObjectInstance> ois = connection.queryMBeans(on, null);
+        return ois.stream().map(oi -> {
+            try {
+                return new Pair<>(oi.getObjectName().toString(), connection.getAttribute(oi.getObjectName(), attr));
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }).collect(Collectors.toList());
     }
 
     public void close() {
         IOUtils.closeQuietly(connector);
+    }
+
+    public static void main(String[] args) throws Exception {
+        JmxConnection connection = new JmxConnection("kafka04-matrix.zeus.lianjia.com", 9901);
+        List<Pair<String, Object>> objects = connection.getAttribution("kafka.log:type=Log,name=LogEndOffset,topic=search-app-18-log,*", "Value");
+        objects.forEach(System.out::println);
     }
 }

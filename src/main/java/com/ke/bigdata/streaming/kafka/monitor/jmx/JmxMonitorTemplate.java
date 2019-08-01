@@ -6,18 +6,12 @@ package com.ke.bigdata.streaming.kafka.monitor.jmx;
  * desc:
  */
 public class JmxMonitorTemplate {
-    private final String name;
     private final String beanName;
     private final String attribution;
 
-    public JmxMonitorTemplate(String name, String beanName, String attribution) {
-        this.name = name;
+    public JmxMonitorTemplate(String beanName, String attribution) {
         this.beanName = beanName;
         this.attribution = attribution;
-    }
-
-    public String getName() {
-        return name;
     }
 
     public String getBeanName() {
@@ -30,6 +24,6 @@ public class JmxMonitorTemplate {
 
     public JmxMonitorItem applyTopic(String topic) {
         String newBeanName = beanName.replace("${topic}", topic);
-        return new JmxMonitorItem(name, newBeanName, attribution, topic);
+        return new JmxMonitorItem(newBeanName, attribution, topic);
     }
 }

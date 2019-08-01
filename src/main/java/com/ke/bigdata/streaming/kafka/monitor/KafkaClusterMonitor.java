@@ -25,7 +25,7 @@ public class KafkaClusterMonitor implements Closeable {
         kafkaCluster = new KafkaCluster(config.getString("zk"), config.getString("path"));
 
         jmxMonitorTemplates = config.getConfigList("jmx").stream()
-                .map(c -> new JmxMonitorTemplate(c.getString("name"), c.getString("beanName"),
+                .map(c -> new JmxMonitorTemplate(c.getString("beanName"),
                         c.getString("attribution"))).collect(Collectors.toList());
 
         topics = config.getStringList("topics");
