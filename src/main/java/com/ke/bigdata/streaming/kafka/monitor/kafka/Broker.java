@@ -43,11 +43,11 @@ public class Broker {
         return port;
     }
 
-    public List<JmxMetricItem> poll(List<JmxMonitorItem> list) {
+    public List<JmxMetricItem> poll(List<JmxMonitorItem> list, long timestamp) {
         return list.stream().flatMap(item -> {
             try {
-                List<Pair<String, Object>> values = jmxConnection.getAttribution(item.getBeanName(), item.getAttribution());
-                return values.stream().map(value -> new JmxMetricItem(id, host, value.getLeft(), item.getTopic(), value.getRight()));
+                List<Pair<String, Long>> values = jmxConnection.getAttribution(item.getBeanName(), item.getAttribution());
+                return values.stream().map(value -> new JmxMetricItem(host, value.getLeft(), timestamp, value.getRight()));
             } catch (Exception e) {
                 e.printStackTrace();
                 return Stream.empty();

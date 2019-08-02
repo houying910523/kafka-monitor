@@ -1,6 +1,5 @@
 package com.ke.bigdata.streaming.kafka.monitor.lag;
 
-import com.google.common.base.Joiner;
 import com.ke.bigdata.streaming.kafka.monitor.util.JsonUtils;
 import com.ke.bigdata.streaming.kafka.monitor.util.StringUtils;
 

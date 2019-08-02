@@ -9,17 +9,15 @@ import com.ke.bigdata.streaming.kafka.monitor.util.StringUtils;
  * desc:
  */
 public class JmxMetricItem {
-    private int id;
     private String broker;
     private String name;
-    private String topic;
-    private Object value;
+    private long timestamp;
+    private long value;
 
-    public JmxMetricItem(int id, String broker, String name, String topic, Object value) {
-        this.id = id;
+    public JmxMetricItem(String broker, String name, long timestamp, long value) {
         this.broker = broker;
         this.name = name;
-        this.topic = topic;
+        this.timestamp = timestamp;
         this.value = value;
     }
 
@@ -27,28 +25,19 @@ public class JmxMetricItem {
         return broker;
     }
 
-    public int getId() {
-        return id;
-    }
-
     public String getName() {
         return name;
     }
 
-    public String getTopic() {
-        return topic;
+    public long getTimestamp() {
+        return timestamp;
     }
 
-    public Object getValue() {
+    public long getValue() {
         return value;
     }
 
-    @Override
-    public String toString() {
-        return JsonUtils.toJsonString(this);
-    }
-
     public String toCsvString() {
-        return StringUtils.join(id, broker, topic, name, value);
+        return StringUtils.join(broker, name, value);
     }
 }

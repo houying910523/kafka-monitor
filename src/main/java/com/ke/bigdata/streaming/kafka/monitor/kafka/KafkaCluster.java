@@ -60,11 +60,11 @@ public class KafkaCluster implements Closeable {
         lagService.start();
     }
 
-    public List<JmxMetricItem> fetchJmxItem(List<JmxMonitorTemplate> list, String topic) {
+    public List<JmxMetricItem> fetchJmxItem(List<JmxMonitorTemplate> list, String topic, long timestamp) {
         List<LeaderPartition> leaderPartitions = zkUtils.getPartitions(topic);
         Set<String> leaders = leaderPartitions.stream().map(LeaderPartition::leader).collect(Collectors.toSet());
         List<JmxMonitorItem> items = list.stream().map(item -> item.applyTopic(topic)).collect(Collectors.toList());
-        return leaders.stream().map(id -> brokerMap.get(id)).flatMap(broker -> broker.poll(items).stream())
+        return leaders.stream().map(id -> brokerMap.get(id)).flatMap(broker -> broker.poll(items, timestamp).stream())
                 .collect(Collectors.toList());
     }
 
@@ -111,7 +111,11 @@ public class KafkaCluster implements Closeable {
     @Override
     public void close() {
         brokerMap.values().forEach(Broker::close);
-        lagService.stop();
+        try {
+            lagService.stop();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private void initBrokerInfo() throws Exception {

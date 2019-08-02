@@ -70,14 +70,10 @@ public class LagService {
         pool.execute(createRunnable());
     }
 
-    public void stop() {
+    public void stop() throws InterruptedException {
         threadStop = true;
-        try {
-            pool.awaitTermination(3000, TimeUnit.MILLISECONDS);
-            pool.shutdown();
-        } catch (InterruptedException e) {
-            return;
-        }
+        pool.awaitTermination(3, TimeUnit.SECONDS);
+        pool.shutdownNow();
     }
 
     public synchronized void registerGroupTopic(String group, String topic) {

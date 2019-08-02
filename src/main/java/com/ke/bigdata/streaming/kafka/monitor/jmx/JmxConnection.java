@@ -29,12 +29,13 @@ public class JmxConnection {
         this.connection = connector.getMBeanServerConnection();
     }
 
-    public List<Pair<String, Object>> getAttribution(String beanName, String attr) throws Exception {
+    public List<Pair<String, Long>> getAttribution(String beanName, String attr) throws Exception {
         ObjectName on = new ObjectName(beanName);
         Set<ObjectInstance> ois = connection.queryMBeans(on, null);
         return ois.stream().map(oi -> {
             try {
-                return new Pair<>(oi.getObjectName().toString(), connection.getAttribute(oi.getObjectName(), attr));
+                Object value = connection.getAttribute(oi.getObjectName(), attr);
+                return new Pair<>(oi.getObjectName().toString(), ((Number) value).longValue());
             } catch (Exception e) {
                 throw new RuntimeException();
             }
@@ -47,7 +48,7 @@ public class JmxConnection {
 
     public static void main(String[] args) throws Exception {
         JmxConnection connection = new JmxConnection("kafka04-matrix.zeus.lianjia.com", 9901);
-        List<Pair<String, Object>> objects = connection.getAttribution("kafka.log:type=Log,name=LogEndOffset,topic=search-app-18-log,*", "Value");
+        List<Pair<String, Long>> objects = connection.getAttribution("kafka.log:type=Log,name=LogEndOffset,topic=search-app-18-log,*", "Value");
         objects.forEach(System.out::println);
     }
 }

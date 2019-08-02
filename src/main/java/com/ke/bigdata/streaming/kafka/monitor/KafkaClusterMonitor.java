@@ -2,11 +2,13 @@ package com.ke.bigdata.streaming.kafka.monitor;
 
 import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMonitorTemplate;
 import com.ke.bigdata.streaming.kafka.monitor.kafka.KafkaCluster;
+import com.ke.bigdata.streaming.kafka.monitor.reporter.Reporter;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,6 +22,7 @@ public class KafkaClusterMonitor implements Closeable {
     private final KafkaCluster kafkaCluster;
     private final List<JmxMonitorTemplate> jmxMonitorTemplates;
     private final List<String> topics;
+    private Reporter reporter;
 
     public KafkaClusterMonitor(Config config) throws Exception {
         kafkaCluster = new KafkaCluster(config.getString("zk"), config.getString("path"));
@@ -34,17 +37,30 @@ public class KafkaClusterMonitor implements Closeable {
     }
 
     public void fetch() {
+        long timestamp = System.currentTimeMillis();
         for (String topic : topics) {
-            kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic)
+            kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic, timestamp)
                     .forEach(jmxMetricItem -> {
-                        logger.info(jmxMetricItem.toCsvString());
+                        reporter.report(jmxMetricItem);
                     });
         }
-        kafkaCluster.fetchLagItem().forEach(lji -> logger.info(lji.toCsvString()));
+        kafkaCluster.fetchLagItem().forEach(lji -> {
+            reporter.report(lji);
+        });
+        try {
+            reporter.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         kafkaCluster.close();
+        reporter.close();
+    }
+
+    public void setReporter(Reporter reporter) {
+        this.reporter = reporter;
     }
 }
