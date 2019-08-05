@@ -16,7 +16,7 @@ public class Scheduler {
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
     private final long millisseconds;
     private volatile boolean stopped;
-    private ThreadPoolExecutor pool;
+    private ExecutorService pool;
     private List<Runnable> runnables;
 
     public Scheduler(long period, TimeUnit timeUnit) {
@@ -30,17 +30,16 @@ public class Scheduler {
     }
 
     public void start() {
-        int size = runnables.size();
-        this.pool = new ThreadPoolExecutor(size, size, 10, TimeUnit.MINUTES, new ArrayBlockingQueue<>(size), r -> {
+
+        this.pool = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r);
-            thread.setName("work thread");
+            thread.setName("scheduler");
             return thread;
         });
-        for (Runnable runnable : runnables) {
-            pool.execute(() -> {
-                while(!stopped) {
+        pool.execute(() -> {
+            while(!stopped) {
+                for (Runnable runnable : runnables) {
                     long t1 = System.currentTimeMillis();
-                    logger.info("run task...");
                     runnable.run();
                     long t2 = System.currentTimeMillis();
                     long shouldSleep = millisseconds - (t2 - t1);
@@ -53,8 +52,8 @@ public class Scheduler {
                         break;
                     }
                 }
-            });
-        }
+            }
+        });
     }
 
     public void stop() throws InterruptedException {

@@ -9,9 +9,7 @@ import com.typesafe.config.Config;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * author: hy
@@ -23,14 +21,26 @@ public class KafkaMonitorApplication {
 
     public static void main(String[] args) throws Exception {
         CliOptions cliOptions = new CliOptions(args);
+
         List<Config> configs = cliOptions.getConfigs();
+        String reportHost = cliOptions.getReporter();
+        int parallelism = cliOptions.getParallelism();
 
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(parallelism, parallelism, 0, TimeUnit.SECONDS,
+                new LinkedBlockingDeque<>(), new ThreadFactory() {
+            int i = 0;
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread(r);
+                thread.setName("worker-" + i);
+                i++;
+                return thread;
+            }
+        });
+        Reporter reporter = new InfluxDbReporter(reportHost);
         List<KafkaClusterMonitor> kafkaClusterMonitors = new ArrayList<>();
-
-        Reporter reporter = new InfluxDbReporter(cliOptions.getReporter());
-
         for (Config config : configs) {
-            KafkaClusterMonitor kafkaClusterMonitor = new KafkaClusterMonitor(config);
+            KafkaClusterMonitor kafkaClusterMonitor = new KafkaClusterMonitor(config, threadPoolExecutor);
             kafkaClusterMonitor.setReporter(reporter);
             kafkaClusterMonitors.add(kafkaClusterMonitor);
         }

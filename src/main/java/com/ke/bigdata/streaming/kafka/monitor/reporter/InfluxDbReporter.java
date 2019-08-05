@@ -3,6 +3,7 @@ package com.ke.bigdata.streaming.kafka.monitor.reporter;
 import com.ke.bigdata.streaming.kafka.monitor.jmx.JmxMetricItem;
 import com.ke.bigdata.streaming.kafka.monitor.lag.GroupTopicPartition;
 import com.ke.bigdata.streaming.kafka.monitor.lag.LagMetricItem;
+import org.influxdb.BatchOptions;
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
@@ -24,13 +25,19 @@ public class InfluxDbReporter implements Reporter {
     public InfluxDbReporter(String address) {
         this.influxDB = InfluxDBFactory.connect("http://" + address);
         influxDB.setDatabase("kafka_monitor");
-        influxDB.enableBatch();
+        BatchOptions options = BatchOptions.DEFAULTS.exceptionHandler((points, throwable) -> {
+            logger.error("write batch error", throwable);
+            points.forEach(point -> {
+                logger.info("write error point: {}", point);
+            });
+        }).flushDuration(10000);
+        influxDB.enableBatch(options);
     }
 
     @Override
-    public void report(JmxMetricItem jmxMetricItem) {
+    public void report(String measurement, JmxMetricItem jmxMetricItem) {
         String[] array = jmxMetricItem.getName().split(":", 2)[1].split(",");
-        Point.Builder builder = Point.measurement("kafka_monitor")
+        Point.Builder builder = Point.measurement(measurement)
                 .tag("broker", jmxMetricItem.getBroker())
                 .time(jmxMetricItem.getTimestamp(), TimeUnit.MILLISECONDS);
 
@@ -52,20 +59,20 @@ public class InfluxDbReporter implements Reporter {
             return;
         }
         Point point = builder.build();
-        logger.info(point.toString());
+        //logger.info(point.toString());
         influxDB.write(point);
     }
 
     @Override
-    public void report(LagMetricItem lagMetricItem) {
-        Point point = Point.measurement("kafka_monitor")
+    public void report(String measurement, LagMetricItem lagMetricItem) {
+        Point point = Point.measurement(measurement)
                 .tag("topic", lagMetricItem.getTopic())
                 .tag("partition", String.valueOf(lagMetricItem.getPartition()))
                 .tag("group", lagMetricItem.getGroup())
                 .time(lagMetricItem.getCommitTime(), TimeUnit.MILLISECONDS)
                 .addField("lag", lagMetricItem.getLag())
                 .build();
-        logger.info(point.toString());
+        //logger.info(point.toString());
         influxDB.write(point);
     }
 
@@ -76,6 +83,14 @@ public class InfluxDbReporter implements Reporter {
 
     @Override
     public void close() throws IOException {
+        influxDB.flush();
         influxDB.close();
+    }
+
+    public static void main(String[] args) throws IOException {
+        Reporter reporter = new InfluxDbReporter("127.0.0.1:8086");
+        reporter.report("dfa", new JmxMetricItem("id", "name:type=Log,name=test", System.currentTimeMillis(), 2));
+        reporter.flush();
+        reporter.close();
     }
 }

@@ -1,5 +1,6 @@
 package com.ke.bigdata.streaming.kafka.monitor.jmx;
 
+import com.google.common.collect.Lists;
 import com.ke.bigdata.streaming.kafka.monitor.util.IOUtils;
 import com.ke.bigdata.streaming.kafka.monitor.util.Pair;
 
@@ -31,15 +32,20 @@ public class JmxConnection {
 
     public List<Pair<String, Long>> getAttribution(String beanName, String attr) throws Exception {
         ObjectName on = new ObjectName(beanName);
-        Set<ObjectInstance> ois = connection.queryMBeans(on, null);
-        return ois.stream().map(oi -> {
-            try {
-                Object value = connection.getAttribute(oi.getObjectName(), attr);
-                return new Pair<>(oi.getObjectName().toString(), ((Number) value).longValue());
-            } catch (Exception e) {
-                throw new RuntimeException();
-            }
-        }).collect(Collectors.toList());
+        if (beanName.contains("*")) {
+            Set<ObjectInstance> ois = connection.queryMBeans(on, null);
+            return ois.stream().map(oi -> {
+                try {
+                    Object value = connection.getAttribute(oi.getObjectName(), attr);
+                    return new Pair<>(oi.getObjectName().toString(), ((Number) value).longValue());
+                } catch (Exception e) {
+                    throw new RuntimeException();
+                }
+            }).collect(Collectors.toList());
+        } else {
+            long value = ((Number) connection.getAttribute(on, attr)).longValue();
+            return Lists.newArrayList(new Pair<>(beanName, value));
+        }
     }
 
     public void close() {

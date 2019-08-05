@@ -23,14 +23,17 @@ public class CliOptions {
 
     private final String configDir;
     private final String reporter;
+    private final int parallelism;
 
     public CliOptions(String[] args) throws ParseException {
         Options options = new Options();
         options.addOption("c", "config", true, "配置目录");
         options.addOption(null, "reporter", true, "influxdb地址");
+        options.addOption("p", "parallelism", true, "并行度");
         CommandLine commandLine = new DefaultParser().parse(options, args);
-        configDir = commandLine.getOptionValue("config");
-        reporter = commandLine.getOptionValue("reporter");
+        this.configDir = commandLine.getOptionValue("config");
+        this.reporter = commandLine.getOptionValue("reporter");
+        this.parallelism = Integer.valueOf(commandLine.getOptionValue("parallelism"));
     }
 
     public List<Config> getConfigs() throws Exception {
@@ -48,5 +51,9 @@ public class CliOptions {
 
     public String getReporter() {
         return reporter;
+    }
+
+    public int getParallelism() {
+        return parallelism;
     }
 }

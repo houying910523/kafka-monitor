@@ -13,7 +13,7 @@ import java.io.Flushable;
  */
 public interface Reporter extends Closeable, Flushable {
 
-    void report(JmxMetricItem jmxMetricItem);
+    void report(String clusterName, JmxMetricItem jmxMetricItem);
 
-    void report(LagMetricItem lji);
+    void report(String clusterName, LagMetricItem lagMetricItem);
 }
