@@ -26,8 +26,8 @@ public class KafkaMonitorApplication {
         String reportHost = cliOptions.getReporter();
         int parallelism = cliOptions.getParallelism();
 
-        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(parallelism, parallelism, 0, TimeUnit.SECONDS,
-                new LinkedBlockingDeque<>(), new ThreadFactory() {
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(parallelism, parallelism, 60, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(), new ThreadFactory() {
             int i = 0;
             @Override
             public Thread newThread(Runnable r) {
@@ -37,6 +37,7 @@ public class KafkaMonitorApplication {
                 return thread;
             }
         });
+
         Reporter reporter = new InfluxDbReporter(reportHost);
         List<KafkaClusterMonitor> kafkaClusterMonitors = new ArrayList<>();
         for (Config config : configs) {
@@ -48,7 +49,10 @@ public class KafkaMonitorApplication {
         Scheduler scheduler = new Scheduler(10, TimeUnit.SECONDS);
 
         for (KafkaClusterMonitor kafkaClusterMonitor : kafkaClusterMonitors) {
-            scheduler.addTask(kafkaClusterMonitor::fetch);
+            scheduler.addTask(() -> {
+                long timestamp = System.currentTimeMillis();
+                kafkaClusterMonitor.fetch(timestamp);
+            });
         }
 
         scheduler.start();

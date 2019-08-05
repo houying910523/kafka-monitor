@@ -43,11 +43,11 @@ public class KafkaClusterMonitor implements Closeable {
         this.poolExecutor = poolExecutor;
     }
 
-    public void fetch() {
+    public void fetch(long timestamp) {
         logger.info("fetch cluster {} metrics start", clusterName);
-        long timestamp = System.currentTimeMillis();
         for (String topic : topics) {
             poolExecutor.execute(() -> {
+                logger.info("fetch cluster {} jmx metrics", clusterName);
                 List<JmxMetricItem> jmxMetricItems = kafkaCluster.fetchJmxItem(jmxMonitorTemplates, topic, timestamp);
                 jmxMetricItems.forEach(jmxMetricItem -> {
                     reporter.report(clusterName, jmxMetricItem);
@@ -55,6 +55,7 @@ public class KafkaClusterMonitor implements Closeable {
             });
         }
         poolExecutor.execute(() -> {
+            logger.info("fetch cluster {} lags", clusterName);
             List<LagMetricItem> lagMetricItems = kafkaCluster.fetchLagItem();
             lagMetricItems.forEach(lji -> {
                 reporter.report(clusterName, lji);

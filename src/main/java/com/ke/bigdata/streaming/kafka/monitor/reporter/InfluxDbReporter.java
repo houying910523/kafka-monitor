@@ -30,7 +30,7 @@ public class InfluxDbReporter implements Reporter {
             points.forEach(point -> {
                 logger.info("write error point: {}", point);
             });
-        }).flushDuration(10000);
+        });
         influxDB.enableBatch(options);
     }
 

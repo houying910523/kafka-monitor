@@ -38,19 +38,16 @@ public class Scheduler {
         });
         pool.execute(() -> {
             while(!stopped) {
+                long t1 = System.currentTimeMillis();
                 for (Runnable runnable : runnables) {
-                    long t1 = System.currentTimeMillis();
                     runnable.run();
-                    long t2 = System.currentTimeMillis();
-                    long shouldSleep = millisseconds - (t2 - t1);
-                    while (shouldSleep < 0) {
-                        shouldSleep = millisseconds + shouldSleep;
-                    }
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(shouldSleep);
-                    } catch (InterruptedException e) {
-                        break;
-                    }
+                }
+                long t2 = System.currentTimeMillis();
+                long shouldSleep = millisseconds - (t2 - t1);
+                try {
+                    TimeUnit.MILLISECONDS.sleep(shouldSleep);
+                } catch (InterruptedException e) {
+                    break;
                 }
             }
         });
