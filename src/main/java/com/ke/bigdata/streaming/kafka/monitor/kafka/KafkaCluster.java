@@ -76,38 +76,6 @@ public class KafkaCluster implements Closeable {
         return lagService.snapshot();
     }
 
-    public List<String> listGroups(String topic) {
-        ConsumerNetworkClient client = createConsumerNetworkClient();
-        List<String> result = brokerMap.values().stream()
-                .map(broker -> new Node(Integer.valueOf(broker.getId()), broker.getHost(), broker.getPort()))
-                .flatMap(node -> {
-                    RequestFuture<ClientResponse> future = client.send(node, new ListGroupsRequest.Builder());
-                    client.poll(future);
-                    ListGroupsResponse response = (ListGroupsResponse) future.value().responseBody();
-                    List<String> groups = response.groups().stream().map(ListGroupsResponse.Group::groupId)
-                            .collect(Collectors.toList());
-                    future = client.send(node, new DescribeGroupsRequest.Builder(groups));
-                    client.poll(future);
-                    Set<String> set = Sets.newHashSet();
-                    DescribeGroupsResponse response2 = (DescribeGroupsResponse) future.value().responseBody();
-                    response2.groups().forEach((group, metadata) -> {
-                        if ("Stable".equals(metadata.state())) {
-                            Set<String> topics = metadata.members().stream().flatMap(gm -> {
-                                PartitionAssignor.Assignment assignment = ConsumerProtocol
-                                        .deserializeAssignment(gm.memberAssignment());
-                                return assignment.partitions().stream().map(TopicPartition::topic);
-                            }).collect(Collectors.toSet());
-                            if (topics.contains(topic)) {
-                                set.add(group);
-                            }
-                        }
-                    });
-                    return set.stream();
-                }).collect(Collectors.toList());
-        IOUtils.closeQuietly(client);
-        return result;
-    }
-
     @Override
     public void close() {
         brokerMap.values().forEach(Broker::close);
