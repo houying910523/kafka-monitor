@@ -30,35 +30,6 @@ public class ZkUtils {
         this.objectMapper = new ObjectMapper();
     }
 
-    public String getLeaderForPartition(TopicPartition topicPartition) {
-        return getLeaderForPartition(topicPartition.topic(), topicPartition.partition());
-    }
-
-    public String getLeaderForPartition(String topic, int pid) {
-        String stateJson = zkClient.readData(zkPath + BROKERS_TOPICS + "/" + topic + "/partitions/" + pid + "/state");
-        try {
-            return objectMapper.readTree(stateJson).get("leader").asText();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public List<String> getIsrForPartition(TopicPartition topicPartition) {
-        String stateJson = zkClient.readData(
-                zkPath + BROKERS_TOPICS + "/" + topicPartition.topic() + "/partitions/" + topicPartition.partition()
-                        + "/state");
-        try {
-            List<String> ids = Lists.newArrayList();
-            for (JsonNode node : objectMapper.readTree(stateJson).get("isr")) {
-                ids.add(node.asText());
-            }
-            return ids;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public List<String> listBrokerIds() {
         return zkClient.getChildren(zkPath + BROKERS_IDS);
     }

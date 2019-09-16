@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ public class LagService {
     private static final Logger logger = LoggerFactory.getLogger(LagService.class);
     private final Pattern pattern;
     private final ExecutorService pool;
+    private final String bootstrap;
     private volatile boolean threadStop = true;
     private Map<String, Set<String>> topicGroups;
     private Set<Integer> currentPartition;
@@ -42,6 +44,7 @@ public class LagService {
     private Map<GroupTopicPartition, ConsumerGroupOffset> snapshot;
 
     public LagService(String bootstrap) {
+        this.bootstrap = bootstrap;
         this.topicGroups = Maps.newConcurrentMap();
         this.currentPartition = Sets.newConcurrentHashSet();
         this.pattern = Pattern.compile(
@@ -52,17 +55,7 @@ public class LagService {
             return thread;
         });
 
-        Map<String, Object> params = Maps.newHashMap();
-        params.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-        params.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-offset-monitor-group");
-        params.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
-        params.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
-        params.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        params.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-
-        this.kafkaConsumer = new KafkaConsumer<>(params);
+        this.kafkaConsumer = createKafkaConsumer(bootstrap);
         this.snapshot = Maps.newHashMap();
     }
 
@@ -96,7 +89,7 @@ public class LagService {
             MessageFormatter formatter = new GroupMetadataManager.OffsetsMessageFormatter();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
             while (!threadStop) {
-                ConsumerRecords<byte[], byte[]> records = kafkaConsumer.poll(500);
+                ConsumerRecords<byte[], byte[]> records = doWithConsumer(consumer -> consumer.poll(500));
                 currentPartition.forEach(partition -> {
                     TopicPartition tp = new TopicPartition("__consumer_offsets", partition);
                     for (ConsumerRecord<byte[], byte[]> record : records.records(tp)) {
@@ -111,11 +104,34 @@ public class LagService {
         };
     }
 
+    private KafkaConsumer<byte[], byte[]> createKafkaConsumer(String bootstrap) {
+        Map<String, Object> params = Maps.newHashMap();
+        params.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        params.put(ConsumerConfig.GROUP_ID_CONFIG, "consumer-offset-monitor-group");
+        params.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        params.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                "org.apache.kafka.common.serialization.ByteArrayDeserializer");
+        params.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        params.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        return new KafkaConsumer<>(params);
+    }
+
+    private <T> T doWithConsumer(Function<KafkaConsumer<byte[], byte[]>, T> function) {
+        try {
+            return function.apply(kafkaConsumer);
+        } catch (IllegalStateException e) {
+            kafkaConsumer.close();
+            kafkaConsumer = createKafkaConsumer(bootstrap);
+            return doWithConsumer(function);
+        }
+    }
+
     public List<LagMetricItem> snapshot() {
         List<ConsumerGroupOffset> list = Lists.newArrayList(snapshot.values());
         List<TopicPartition> topicPartitions = list.stream()
                 .map(gtp -> new TopicPartition(gtp.topic(), gtp.partition())).collect(Collectors.toList());
-        Map<TopicPartition, Long> endOffsets = kafkaConsumer.endOffsets(topicPartitions);
+        Map<TopicPartition, Long> endOffsets = doWithConsumer(consumer -> consumer.endOffsets(topicPartitions));
         return list.stream().map(cgo -> {
             long endOffset = endOffsets.get(new TopicPartition(cgo.topic(), cgo.partition()));
             long consumerOffset = cgo.offset();

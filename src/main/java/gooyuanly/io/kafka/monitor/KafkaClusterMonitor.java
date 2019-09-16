@@ -32,6 +32,7 @@ public class KafkaClusterMonitor implements Closeable {
     public KafkaClusterMonitor(Config config, ThreadPoolExecutor poolExecutor) throws Exception {
         this.clusterName = config.getString("name");
         this.kafkaCluster = new KafkaCluster(config.getString("zk"), config.getString("path"));
+        kafkaCluster.start();
 
         this.jmxMonitorTemplates = config.getConfigList("jmx").stream()
                 .map(c -> new JmxMonitorTemplate(c.getString("beanName"),
@@ -67,7 +68,6 @@ public class KafkaClusterMonitor implements Closeable {
     @Override
     public void close() throws IOException {
         kafkaCluster.close();
-        reporter.close();
     }
 
     public void setReporter(Reporter reporter) {

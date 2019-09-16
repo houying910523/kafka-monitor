@@ -44,7 +44,7 @@ public class InfluxDbReporter implements Reporter {
         for (String kv: array) {
             if (kv.contains("=")) {
                 String[] keyAndValue = kv.split("=", 2);
-                if (keyAndValue[0].equals("name")) {
+                if ("name".equals(keyAndValue[0])) {
                     builder.addField(keyAndValue[1], jmxMetricItem.getValue());
                     setField = true;
                 } else {
@@ -58,7 +58,6 @@ public class InfluxDbReporter implements Reporter {
             return;
         }
         Point point = builder.build();
-        //logger.info(point.toString());
         influxDB.write(point);
     }
 
@@ -71,7 +70,6 @@ public class InfluxDbReporter implements Reporter {
                 .time(lagMetricItem.getCommitTime(), TimeUnit.MILLISECONDS)
                 .addField("lag", lagMetricItem.getLag())
                 .build();
-        //logger.info(point.toString());
         influxDB.write(point);
     }
 

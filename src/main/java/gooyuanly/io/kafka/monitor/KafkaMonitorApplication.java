@@ -60,15 +60,16 @@ public class KafkaMonitorApplication {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 scheduler.stop();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            for (KafkaClusterMonitor kafkaClusterMonitor : kafkaClusterMonitors) {
-                try {
-                    kafkaClusterMonitor.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                for (KafkaClusterMonitor kafkaClusterMonitor : kafkaClusterMonitors) {
+                    try {
+                        kafkaClusterMonitor.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
+                reporter.close();
+            } catch (InterruptedException | IOException e) {
+                e.printStackTrace();
             }
         }));
     }
