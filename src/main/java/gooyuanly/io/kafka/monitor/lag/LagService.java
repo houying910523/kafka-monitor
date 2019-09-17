@@ -10,6 +10,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.InterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,16 +90,20 @@ public class LagService {
             MessageFormatter formatter = new GroupMetadataManager.OffsetsMessageFormatter();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
             while (!threadStop) {
-                ConsumerRecords<byte[], byte[]> records = doWithConsumer(consumer -> consumer.poll(500));
-                currentPartition.forEach(partition -> {
-                    TopicPartition tp = new TopicPartition("__consumer_offsets", partition);
-                    for (ConsumerRecord<byte[], byte[]> record : records.records(tp)) {
-                        formatter.writeTo(record, new PrintStream(byteArrayOutputStream));
-                        String line = new String(byteArrayOutputStream.toByteArray());
-                        parseLine(line);
-                        byteArrayOutputStream.reset();
-                    }
-                });
+                try {
+                    ConsumerRecords<byte[], byte[]> records = doWithConsumer(consumer -> consumer.poll(500));
+                    currentPartition.forEach(partition -> {
+                        TopicPartition tp = new TopicPartition("__consumer_offsets", partition);
+                        for (ConsumerRecord<byte[], byte[]> record : records.records(tp)) {
+                            formatter.writeTo(record, new PrintStream(byteArrayOutputStream));
+                            String line = new String(byteArrayOutputStream.toByteArray());
+                            parseLine(line);
+                            byteArrayOutputStream.reset();
+                        }
+                    });
+                } catch (InterruptException e) {
+                    logger.error("error", e);
+                }
             }
             logger.info("loop exit");
         };
@@ -117,13 +122,14 @@ public class LagService {
         return new KafkaConsumer<>(params);
     }
 
-    private <T> T doWithConsumer(Function<KafkaConsumer<byte[], byte[]>, T> function) {
+    private synchronized <T> T doWithConsumer(Function<KafkaConsumer<byte[], byte[]>, T> function) {
         try {
             return function.apply(kafkaConsumer);
         } catch (IllegalStateException e) {
+            logger.error("error when do something with kafkaConsumer, retry once", e);
             kafkaConsumer.close();
             kafkaConsumer = createKafkaConsumer(bootstrap);
-            return doWithConsumer(function);
+            return function.apply(kafkaConsumer);
         }
     }
 
@@ -131,7 +137,7 @@ public class LagService {
         List<ConsumerGroupOffset> list = Lists.newArrayList(snapshot.values());
         List<TopicPartition> topicPartitions = list.stream()
                 .map(gtp -> new TopicPartition(gtp.topic(), gtp.partition())).collect(Collectors.toList());
-        Map<TopicPartition, Long> endOffsets = doWithConsumer(consumer -> consumer.endOffsets(topicPartitions));
+        Map<TopicPartition, Long> endOffsets = kafkaConsumer.endOffsets(topicPartitions);
         return list.stream().map(cgo -> {
             long endOffset = endOffsets.get(new TopicPartition(cgo.topic(), cgo.partition()));
             long consumerOffset = cgo.offset();

@@ -6,25 +6,15 @@ import gooyuanly.io.kafka.monitor.jmx.JmxMonitorItem;
 import gooyuanly.io.kafka.monitor.jmx.JmxMonitorTemplate;
 import gooyuanly.io.kafka.monitor.lag.LagMetricItem;
 import gooyuanly.io.kafka.monitor.lag.LagService;
-import org.I0Itec.zkclient.IZkChildListener;
-import org.apache.kafka.clients.*;
-import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient;
-import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.metrics.Metrics;
-import org.apache.kafka.common.network.ChannelBuilder;
-import org.apache.kafka.common.network.Selector;
-import org.apache.kafka.common.utils.Time;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
