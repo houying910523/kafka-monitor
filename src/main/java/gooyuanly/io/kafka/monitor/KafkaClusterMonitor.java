@@ -1,11 +1,11 @@
 package gooyuanly.io.kafka.monitor;
 
+import com.typesafe.config.Config;
 import gooyuanly.io.kafka.monitor.jmx.JmxMetricItem;
 import gooyuanly.io.kafka.monitor.jmx.JmxMonitorTemplate;
 import gooyuanly.io.kafka.monitor.kafka.KafkaCluster;
 import gooyuanly.io.kafka.monitor.lag.LagMetricItem;
 import gooyuanly.io.kafka.monitor.reporter.Reporter;
-import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,10 +57,15 @@ public class KafkaClusterMonitor implements Closeable {
         }
         poolExecutor.execute(() -> {
             logger.info("fetch cluster {} lags", clusterName);
-            List<LagMetricItem> lagMetricItems = kafkaCluster.fetchLagItem();
-            lagMetricItems.forEach(lji -> {
-                reporter.report(clusterName, lji);
-            });
+            try {
+                List<LagMetricItem> lagMetricItems = kafkaCluster.fetchLagItem();
+                lagMetricItems.forEach(lji -> {
+                    reporter.report(clusterName, lji);
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
         });
         logger.info("queue.size = {}", poolExecutor.getQueue().size());
     }

@@ -86,7 +86,6 @@ public class LagService {
         return () -> {
             threadStop = false;
             logger.info("loop start");
-            kafkaConsumer.subscribe(Collections.singletonList("__consumer_offsets"));
             MessageFormatter formatter = new GroupMetadataManager.OffsetsMessageFormatter();
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(1024);
             while (!threadStop) {
@@ -119,7 +118,9 @@ public class LagService {
                 "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         params.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         params.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        return new KafkaConsumer<>(params);
+        KafkaConsumer<byte[], byte[]> consumer = new KafkaConsumer<>(params);
+        consumer.subscribe(Collections.singletonList("__consumer_offsets"));
+        return consumer;
     }
 
     private synchronized <T> T doWithConsumer(Function<KafkaConsumer<byte[], byte[]>, T> function) {

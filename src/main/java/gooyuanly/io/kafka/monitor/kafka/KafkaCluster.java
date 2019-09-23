@@ -59,8 +59,14 @@ public class KafkaCluster implements Closeable {
         lagService.registerGroupTopic(group, topic);
     }
 
-    public List<LagMetricItem> fetchLagItem() {
-        return lagService.snapshot();
+    public List<LagMetricItem> fetchLagItem() throws Exception {
+        try {
+            return lagService.snapshot();
+        } catch (Exception e) {
+            lagService.stop();
+            lagService.start();
+            return lagService.snapshot();
+        }
     }
 
     @Override
