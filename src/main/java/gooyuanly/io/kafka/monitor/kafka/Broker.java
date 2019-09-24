@@ -48,7 +48,11 @@ public class Broker {
                 List<Pair<String, Long>> values = jmxConnection.getAttribution(item.getBeanName(), item.getAttribution());
                 return values.stream().map(value -> new JmxMetricItem(host, value.getLeft(), timestamp, value.getRight()));
             } catch (Exception e) {
-                e.printStackTrace();
+                try {
+                    jmxConnection.reconnect();
+                } catch (Exception e2) {
+                    e2.printStackTrace();
+                }
                 return Stream.empty();
             }
         }).collect(Collectors.toList());

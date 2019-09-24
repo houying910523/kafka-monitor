@@ -29,6 +29,7 @@ public class KafkaCluster implements Closeable {
     private Map<String, Broker> brokerMap;
 
     private LagService lagService;
+    private String bootstrap;
 
     public KafkaCluster(String zk, String path) throws Exception {
         this.zkUtils = new ZkUtils(zk, path);
@@ -41,7 +42,7 @@ public class KafkaCluster implements Closeable {
 
     public void start() throws Exception {
         initBrokerInfo();
-        String bootstrap = brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort())
+        this.bootstrap = brokerMap.values().stream().map(b -> b.getHost() + ":" + b.getPort())
                 .reduce((b1, b2) -> b1 + "," + b2).get();
         lagService = new LagService(bootstrap);
         lagService.start();
@@ -64,6 +65,7 @@ public class KafkaCluster implements Closeable {
             return lagService.snapshot();
         } catch (Exception e) {
             lagService.stop();
+            lagService = new LagService(bootstrap);
             lagService.start();
             return lagService.snapshot();
         }

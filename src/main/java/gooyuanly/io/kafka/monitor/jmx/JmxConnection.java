@@ -9,6 +9,7 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,10 +23,14 @@ public class JmxConnection {
 
     private static final String JMX_URL = "service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi";
 
-    private final JMXConnector connector;
+    private JMXConnector connector;
+    private final String host;
+    private final int port;
     private MBeanServerConnection connection;
 
     public JmxConnection(String host, int port) throws IOException {
+        this.host = host;
+        this.port = port;
         this.connector = JMXConnectorFactory.connect(new JMXServiceURL(String.format(JMX_URL, host, port)));
         this.connection = connector.getMBeanServerConnection();
     }
@@ -56,5 +61,11 @@ public class JmxConnection {
         JmxConnection connection = new JmxConnection("kafka04-matrix.zeus.lianjia.com", 9901);
         List<Pair<String, Long>> objects = connection.getAttribution("kafka.log:type=Log,name=LogEndOffset,topic=search-app-18-log,*", "Value");
         objects.forEach(System.out::println);
+    }
+
+    public void reconnect() throws IOException {
+        close();
+        this.connector = JMXConnectorFactory.connect(new JMXServiceURL(String.format(JMX_URL, host, port)));
+        this.connection = connector.getMBeanServerConnection();
     }
 }
